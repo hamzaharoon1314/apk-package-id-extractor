@@ -22,7 +22,9 @@ import requests
 PKG_RE = re.compile(r"package:\s+name='([^']+)'")
 VERSION_RE = re.compile(r"versionName='([^']+)'")
 LABEL_RE = re.compile(r"application-label(?:-[^:]+)?:'([^']+)'")
-ICON_RE = re.compile(r"application-icon-[^:]+:'([^']+)'")
+ICON_RE = re.compile(
+    r"(?:application-icon-[^:]+|icon)='([^']+)'"
+)
 
 
 @dataclass
@@ -164,7 +166,7 @@ def extract_badging(aapt: str, apk_path: Path):
 
     version_match = VERSION_RE.search(stdout)
     label_match = LABEL_RE.search(stdout)
-    icon_match = ICON_RE.search(stdout)
+    icon_matches = ICON_RE.findall(stdout)
 
     package_id = pkg_match.group(1)
 
@@ -178,10 +180,24 @@ def extract_badging(aapt: str, apk_path: Path):
         if label_match else apk_path.stem
     )
 
-    icon_path = (
-        icon_match.group(1)
-        if icon_match else ""
-    )
+    icon_path = ""
+
+    if icon_matches:
+
+        preferred_icons = [
+            i for i in icon_matches
+            if (
+                ".png" in i
+                or ".webp" in i
+                or ".jpg" in i
+            )
+        ]
+
+        if preferred_icons:
+            icon_path = preferred_icons[0]
+
+        else:
+            icon_path = icon_matches[0]
 
     return (
         app_name,
@@ -202,9 +218,14 @@ def extract_icon(
 
     try:
 
+        output_icon.parent.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
         with output_icon.open("wb") as f:
 
-            subprocess.run(
+            proc = subprocess.run(
                 [
                     "unzip",
                     "-p",
@@ -212,15 +233,109 @@ def extract_icon(
                     internal_icon_path
                 ],
                 stdout=f,
-                stderr=subprocess.DEVNULL,
-                check=True
+                stderr=subprocess.PIPE
             )
 
-        return True
+        if not output_icon.exists():
+            return False
+
+        if output_icon.stat().st_size == 0:
+
+            output_icon.unlink(
+                missing_ok=True
+            )
+
+            return False
+
+        return proc.returncode == 0
 
     except Exception:
+
         return False
 
+
+def generate_discoverium_config(
+    repo,
+    asset,
+    row,
+    all_assets
+):
+
+    primary_name = asset["name"]
+
+    other_assets = []
+
+    for a in all_assets:
+
+        if a["name"] != primary_name:
+
+            other_assets.append([
+                a["name"],
+                a["browser_download_url"]
+            ])
+
+    config = {
+
+        "id": row.package_id,
+
+        "url": f"https://github.com/{repo}",
+
+        "author": repo.split("/")[0],
+
+        "name": row.app_name,
+
+        "installedVersion": "all",
+
+        "latestVersion": "all",
+
+        "apkUrls": [
+            [
+                primary_name,
+                row.download_url
+            ]
+        ],
+
+        "otherAssetUrls": other_assets,
+
+        "preferredApkIndex": 0,
+
+        "additionalSettings": {
+
+            "includePrereleases": False,
+
+            "fallbackToOlderReleases": True,
+
+            "sortMethodChoice": "date",
+
+            "useLatestAssetDateAsReleaseDate": True,
+
+            "apkFilterRegEx": (
+                primary_name.replace(".apk", "")
+            ),
+
+            "autoApkFilterByArch": True,
+
+            "appName": row.app_name,
+
+            "appAuthor": repo.split("/")[0],
+
+            "allowInsecure": False,
+        },
+
+        "lastUpdateCheck": int(time.time() * 1000000),
+
+        "pinned": False,
+
+        "categories": [],
+
+        "changeLog": "",
+
+        "overrideSource": None,
+
+        "allowIdChange": False,
+    }
+
+    return config
 
 def markdown_table(rows, repo, release):
 
@@ -233,7 +348,7 @@ def markdown_table(rows, repo, release):
     lines.append("")
 
     lines.append(
-        "| Icon | App | Asset Filename | Package ID | Version | SHA256 | Play Store |"
+        "| Icon | App | Package ID | Asset Filename | Version | Play Store | Discoverium |"
     )
 
     lines.append(
@@ -242,16 +357,41 @@ def markdown_table(rows, repo, release):
 
     for row in rows:
 
-        sha_short = row.sha256[:16] + "..."
+        safe_asset_name = (
+            row.asset_name
+            .replace(".apk", "")
+            .replace("/", "_")
+            .replace("\\", "_")
+        )
+
+        discoverium_link = (
+            f"./discoverium/"
+            f"{row.package_id}__"
+            f"{safe_asset_name}.json"
+        )
 
         lines.append(
             f"| <img src='{row.icon_path}' width='40'> "
             f"| **{row.app_name}** "
-            f"| `{row.asset_name}` "
-            f"| `{row.package_id}` "
-            f"| `{row.version_name}` "
-            f"| {sha_short} "
-            f"| [Link]({row.play_store_url}) |"
+            f"| {row.package_id} "
+            f"| {row.asset_name} "
+            f"| {row.version_name} "
+            f"| [Play Store]({row.play_store_url}) "
+            f"| [Config]({discoverium_link}) |"
+        )
+
+    lines.append("")
+    lines.append("## SHA256")
+    lines.append("")
+
+    for row in rows:
+
+        lines.append(
+            f"- **{row.asset_name}**"
+        )
+
+        lines.append(
+            f"  - `{row.sha256}`"
         )
 
     lines.append("")
@@ -307,6 +447,13 @@ def main() -> int:
 
     json_output = (
         Path("docs/json") / f"{safe_repo_name}.json"
+    )
+    
+    discoverium_dir = Path("docs/discoverium")
+
+    discoverium_dir.mkdir(
+        parents=True,
+        exist_ok=True
     )
 
     icons_dir = Path("docs/icons")
@@ -408,6 +555,11 @@ def main() -> int:
         
         if internal_icon_path.endswith(".xml"):
             internal_icon_path = ""
+            
+            print(
+                f"Skipping XML icon: {internal_icon_path}",
+                flush=True
+            )
         
         icon_ext = Path(internal_icon_path).suffix
 
@@ -422,66 +574,26 @@ def main() -> int:
         )
 
         icon_output = icons_dir / icon_filename
+        
+        if not icon_output.exists():
 
-        def extract_icon(
-            apk_path: Path,
-            internal_icon_path: str,
-            output_icon: Path
-        ):
-
-            if not internal_icon_path:
-                return False
-
-            try:
-
-                output_icon.parent.mkdir(
-                    parents=True,
-                    exist_ok=True
-                )
-
-                with output_icon.open("wb") as f:
-
-                    proc = subprocess.run(
-                        [
-                            "unzip",
-                            "-p",
-                            str(apk_path),
-                            internal_icon_path
-                        ],
-                        stdout=f,
-                        stderr=subprocess.PIPE
-                    )
-
-                if not output_icon.exists():
-                    return False
-
-                if output_icon.stat().st_size == 0:
-
-                    output_icon.unlink(
-                        missing_ok=True
-                    )
-
-                    return False
-
-                return proc.returncode == 0
-
-            except Exception:
-
-                return False
+            extract_icon(
+                out_path,
+                internal_icon_path,
+                icon_output
+            )
+            
+            print(
+                f"Icon extracted: {icon_filename}",
+                flush=True
+            )
 
         play_store_url = (
             "https://play.google.com/store/apps/details"
             f"?id={package_id}"
         )
-
-        elapsed = time.time() - start
-
-        print(
-            f"✓ {package_id} ({elapsed:.2f}s)",
-            flush=True
-        )
-
-        return ApkInfo(
+        
+        row_data = ApkInfo(
             asset_name=asset_name,
             app_name=app_name,
             package_id=package_id,
@@ -493,9 +605,39 @@ def main() -> int:
             icon_path=f"./icons/{icon_filename}"
         )
 
+        discoverium_config = generate_discoverium_config(
+            repo,
+            asset,
+            row_data,
+            apk_assets
+        )
+
+        discoverium_path = (
+            discoverium_dir /
+            f"{package_id}__{safe_asset_name}.json"
+        )
+
+        discoverium_path.write_text(
+            json.dumps(
+                discoverium_config,
+                indent=2,
+                ensure_ascii=False
+            ),
+            encoding="utf-8"
+        )        
+
+        elapsed = time.time() - start
+
+        print(
+            f"✓ {package_id} ({elapsed:.2f}s)",
+            flush=True
+        )
+
+        return row_data
+
     try:
 
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        with ThreadPoolExecutor(max_workers=2) as executor:
 
             futures = [
                 executor.submit(process_asset, asset)
