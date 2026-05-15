@@ -279,7 +279,7 @@ def markdown_table(rows, repo, release):
     lines.append("")
 
     lines.append(
-        "| App | Package ID | Asset Filename | Version | Play Store | Discoverium |"
+        "| App | Package ID | Asset Filename | Version | Play Store | Config  |"
     )
 
     lines.append(
@@ -294,35 +294,6 @@ def markdown_table(rows, repo, release):
             .replace("/", "_")
             .replace("\\", "_")
         )
-
-        discoverium_json_path = (
-            Path("discoverium") /
-            f"{row.package_id}__{safe_asset_name}.json"
-        )
-
-        discoverium_link = (
-            f"./discoverium/"
-            f"{row.package_id}__"
-            f"{safe_asset_name}.json"
-        )
-
-        full_json_path = (
-            Path("docs") /
-            discoverium_json_path
-        )
-
-        config_content = full_json_path.read_text(
-            encoding="utf-8"
-        )
-
-        encoded_config = urllib.parse.quote(
-            config_content,
-            safe=""
-        )
-
-        discoverium_deeplink = (
-            f"obtainium://app/{encoded_config}"
-        )
                 
         lines.append(
             f"| **{row.app_name}** "
@@ -330,8 +301,7 @@ def markdown_table(rows, repo, release):
             f"| {row.asset_name} "
             f"| {row.version_name} "
             f"| [Play Store]({row.play_store_url}) "
-            f"| [Config]({discoverium_link}) / "
-            f"[Add to Discoverium]({discoverium_deeplink}) |"
+            f"| [JSON Config](./discoverium/{row.package_id}__{safe_asset_name}.json) |"
         )
 
     lines.append("")
@@ -628,6 +598,20 @@ def main() -> int:
 
     print("\nJSON updated:")
     print(json_output)
+    
+    repo_list_path = Path("docs/repos.json")
+
+    json_dir = Path("docs/json")
+
+    repos = sorted([
+        p.stem
+        for p in json_dir.glob("*.json")
+    ])
+
+    (Path("docs/repos.json")).write_text(
+        json.dumps(repos, indent=2),
+        encoding="utf-8"
+    )
 
     print("\nDone.")
 
