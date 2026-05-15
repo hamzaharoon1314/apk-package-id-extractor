@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import subprocess
+import urllib.parse
 import tempfile
 import time
 
@@ -271,7 +272,7 @@ def markdown_table(rows, repo, release):
 
     lines = []
 
-    lines.append(f"# APK package IDs for `{repo}`")
+    lines.append(f"# Android APK Package ID & Discoverium Config Generator for `{repo}`")
     lines.append("")
 
     lines.append(f"Release source: `{release}`")
@@ -294,10 +295,33 @@ def markdown_table(rows, repo, release):
             .replace("\\", "_")
         )
 
+        discoverium_json_path = (
+            Path("discoverium") /
+            f"{row.package_id}__{safe_asset_name}.json"
+        )
+
         discoverium_link = (
             f"./discoverium/"
             f"{row.package_id}__"
             f"{safe_asset_name}.json"
+        )
+
+        full_json_path = (
+            Path("docs") /
+            discoverium_json_path
+        )
+
+        config_content = full_json_path.read_text(
+            encoding="utf-8"
+        )
+
+        encoded_config = urllib.parse.quote(
+            config_content,
+            safe=""
+        )
+
+        discoverium_deeplink = (
+            f"obtainium://app/{encoded_config}"
         )
                 
         lines.append(
@@ -306,7 +330,8 @@ def markdown_table(rows, repo, release):
             f"| {row.asset_name} "
             f"| {row.version_name} "
             f"| [Play Store]({row.play_store_url}) "
-            f"| [Config]({discoverium_link}) |"
+            f"| [Config]({discoverium_link}) / "
+            f"[Add to Discoverium]({discoverium_deeplink}) |"
         )
 
     lines.append("")
@@ -324,7 +349,7 @@ def markdown_table(rows, repo, release):
         )
 
     lines.append("")
-    lines.append("_Generated automatically from GitHub release assets._")
+    lines.append("_Automatically generated from GitHub APK release assets with package IDs, SHA256 hashes, and Discoverium import links._")
 
     return "\n".join(lines)
 
@@ -332,7 +357,7 @@ def markdown_table(rows, repo, release):
 def main() -> int:
 
     parser = argparse.ArgumentParser(
-        description="Extract APK package IDs from GitHub releases."
+        description="Android APK Metadata & Discoverium Config Generator"
     )
 
     parser.add_argument(
@@ -363,7 +388,7 @@ def main() -> int:
     if "/" not in repo:
 
         print(
-            "Invalid repo format. Example: ReVanced/revanced-manager"
+            "Invalid repo format. Example: UserName/RepoName"
         )
 
         return 1

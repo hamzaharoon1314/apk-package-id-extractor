@@ -1,4 +1,4 @@
-name: Update APK package IDs
+name: APK Package ID & Discoverium Generator
 
 on:
   workflow_dispatch:
