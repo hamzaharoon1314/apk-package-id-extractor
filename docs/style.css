@@ -5,19 +5,34 @@ body {
   padding: 40px;
 }
 
-.repo {
-  margin-bottom: 50px;
+#repos {
+  display: grid;
+  gap: 20px;
+}
+
+.repo-card {
+  background: #1a1d24;
+  padding: 25px;
+  border-radius: 16px;
+  color: white;
+  text-decoration: none;
+  display: block;
+}
+
+.repo-card:hover {
+  background: #222733;
 }
 
 .card {
   background: #1a1d24;
   padding: 20px;
   border-radius: 14px;
-  margin-top: 15px;
+  margin-top: 20px;
 }
 
 .buttons {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 15px;
 }
@@ -29,4 +44,11 @@ body {
   padding: 10px 14px;
   border-radius: 10px;
   font-weight: bold;
+}
+
+.back {
+  color: white;
+  text-decoration: none;
+  display: inline-block;
+  margin-bottom: 20px;
 }

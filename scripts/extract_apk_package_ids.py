@@ -584,6 +584,10 @@ def main() -> int:
                     "sha256": r.sha256,
                     "play_store_url": r.play_store_url,
                     "download_url": r.download_url,
+                    "discoverium_file": (
+                        f"{r.package_id}__"
+                        f"{r.asset_name.replace('.apk', '').replace('/', '_').replace('\\\\', '_')}.json"
+                    ),
                 }
                 for r in results
             ],
