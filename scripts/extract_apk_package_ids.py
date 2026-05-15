@@ -228,11 +228,12 @@ def markdown_table(rows, repo, release):
 
     lines.append(f"# APK package IDs for `{repo}`")
     lines.append("")
+
     lines.append(f"Release source: `{release}`")
     lines.append("")
 
     lines.append(
-        "| Icon | App Name | Original Asset Filename | Package ID | Version | SHA256 | Play Store |"
+        "| Icon | App | Asset Filename | Package ID | Version | SHA256 | Play Store |"
     )
 
     lines.append(
@@ -244,13 +245,13 @@ def markdown_table(rows, repo, release):
         sha_short = row.sha256[:16] + "..."
 
         lines.append(
-            f"| <img src='{row.icon_path}' width='48'> "
+            f"| <img src='{row.icon_path}' width='40'> "
             f"| **{row.app_name}** "
             f"| `{row.asset_name}` "
             f"| `{row.package_id}` "
             f"| `{row.version_name}` "
-            f"| `{sha_short}` "
-            f"| [Play Store]({row.play_store_url}) |"
+            f"| {sha_short} "
+            f"| [Link]({row.play_store_url}) |"
         )
 
     lines.append("")
@@ -398,15 +399,75 @@ def main() -> int:
 
         sha256 = calculate_sha256(out_path)
 
-        icon_filename = f"{package_id}.png"
+        safe_asset_name = (
+            asset_name
+            .replace(".apk", "")
+            .replace("/", "_")
+            .replace("\\", "_")
+        )
+        
+        if internal_icon_path.endswith(".xml"):
+            internal_icon_path = ""
+        
+        icon_ext = Path(internal_icon_path).suffix
+
+        if not icon_ext:
+            icon_ext = ".png"
+
+        if icon_ext == ".xml":
+            icon_ext = ".png"
+
+        icon_filename = (
+            f"{package_id}__{safe_asset_name}{icon_ext}"
+        )
 
         icon_output = icons_dir / icon_filename
 
-        extract_icon(
-            out_path,
-            internal_icon_path,
-            icon_output
-        )
+        def extract_icon(
+            apk_path: Path,
+            internal_icon_path: str,
+            output_icon: Path
+        ):
+
+            if not internal_icon_path:
+                return False
+
+            try:
+
+                output_icon.parent.mkdir(
+                    parents=True,
+                    exist_ok=True
+                )
+
+                with output_icon.open("wb") as f:
+
+                    proc = subprocess.run(
+                        [
+                            "unzip",
+                            "-p",
+                            str(apk_path),
+                            internal_icon_path
+                        ],
+                        stdout=f,
+                        stderr=subprocess.PIPE
+                    )
+
+                if not output_icon.exists():
+                    return False
+
+                if output_icon.stat().st_size == 0:
+
+                    output_icon.unlink(
+                        missing_ok=True
+                    )
+
+                    return False
+
+                return proc.returncode == 0
+
+            except Exception:
+
+                return False
 
         play_store_url = (
             "https://play.google.com/store/apps/details"
