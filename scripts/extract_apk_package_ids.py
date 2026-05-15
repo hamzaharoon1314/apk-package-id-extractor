@@ -369,9 +369,15 @@ def markdown_table(rows, repo, release):
             f"{row.package_id}__"
             f"{safe_asset_name}.json"
         )
-
+        
+        icon_cell = (
+            f"<img src='{row.icon_path}' width='40'>"
+            if row.icon_path
+            else "No Icon"
+        )
+                
         lines.append(
-            f"| <img src='{row.icon_path}' width='40'> "
+            f"| {icon_cell} "
             f"| **{row.app_name}** "
             f"| {row.package_id} "
             f"| {row.asset_name} "
@@ -553,40 +559,57 @@ def main() -> int:
             .replace("\\", "_")
         )
         
-        if internal_icon_path.endswith(".xml"):
-            internal_icon_path = ""
-            
-            print(
-                f"Skipping XML icon: {internal_icon_path}",
-                flush=True
-            )
-        
-        icon_ext = Path(internal_icon_path).suffix
+        icon_filename = ""
 
-        if not icon_ext:
-            icon_ext = ".png"
+        if internal_icon_path:
 
-        if icon_ext == ".xml":
-            icon_ext = ".png"
+            if internal_icon_path.endswith(".xml"):
 
-        icon_filename = (
-            f"{package_id}__{safe_asset_name}{icon_ext}"
-        )
+                print(
+                    f"Skipping XML icon: {internal_icon_path}",
+                    flush=True
+                )
 
-        icon_output = icons_dir / icon_filename
-        
-        if not icon_output.exists():
+            else:
 
-            extract_icon(
-                out_path,
-                internal_icon_path,
-                icon_output
-            )
-            
-            print(
-                f"Icon extracted: {icon_filename}",
-                flush=True
-            )
+                icon_ext = Path(
+                    internal_icon_path
+                ).suffix.lower()
+
+                if icon_ext not in [
+                    ".png",
+                    ".webp",
+                    ".jpg",
+                    ".jpeg"
+                ]:
+                    icon_ext = ".png"
+
+                icon_filename = (
+                    f"{package_id}__"
+                    f"{safe_asset_name}"
+                    f"{icon_ext}"
+                )
+
+                icon_output = (
+                    icons_dir / icon_filename
+                )
+
+                extracted = extract_icon(
+                    out_path,
+                    internal_icon_path,
+                    icon_output
+                )
+
+                if extracted:
+
+                    print(
+                        f"Icon extracted: {icon_filename}",
+                        flush=True
+                    )
+
+                else:
+
+                    icon_filename = ""
 
         play_store_url = (
             "https://play.google.com/store/apps/details"
@@ -602,7 +625,10 @@ def main() -> int:
             size_bytes=int(asset.get("size", 0)),
             download_url=url,
             play_store_url=play_store_url,
-            icon_path=f"./icons/{icon_filename}"
+            icon_path=(
+                f"./icons/{icon_filename}"
+                if icon_filename else ""
+            )
         )
 
         discoverium_config = generate_discoverium_config(
