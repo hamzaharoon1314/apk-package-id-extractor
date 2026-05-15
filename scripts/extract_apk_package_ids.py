@@ -232,11 +232,11 @@ def markdown_table(rows, repo, release):
     lines.append("")
 
     lines.append(
-        "| Icon | App | Package ID | Version | SHA256 | Play Store |"
+        "| Icon | App Name | Original Asset Filename | Package ID | Version | SHA256 | Play Store |"
     )
 
     lines.append(
-        "|---|---|---|---|---|---|"
+        "|---|---|---|---|---|---|---|"
     )
 
     for row in rows:
@@ -244,16 +244,17 @@ def markdown_table(rows, repo, release):
         sha_short = row.sha256[:16] + "..."
 
         lines.append(
-            f"| ![]({row.icon_path}) "
-            f"| {row.app_name} "
+            f"| <img src='{row.icon_path}' width='48'> "
+            f"| **{row.app_name}** "
+            f"| `{row.asset_name}` "
             f"| `{row.package_id}` "
             f"| `{row.version_name}` "
             f"| `{sha_short}` "
-            f"| [Link]({row.play_store_url}) |"
+            f"| [Play Store]({row.play_store_url}) |"
         )
 
     lines.append("")
-    lines.append("_Generated automatically._")
+    lines.append("_Generated automatically from GitHub release assets._")
 
     return "\n".join(lines)
 
@@ -428,7 +429,7 @@ def main() -> int:
             size_bytes=int(asset.get("size", 0)),
             download_url=url,
             play_store_url=play_store_url,
-            icon_path=f"icons/{icon_filename}"
+            icon_path=f"./icons/{icon_filename}"
         )
 
     try:
