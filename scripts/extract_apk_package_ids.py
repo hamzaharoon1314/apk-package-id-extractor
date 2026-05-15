@@ -663,7 +663,7 @@ def main() -> int:
 
     try:
 
-        with ThreadPoolExecutor(max_workers=2) as executor:
+        with ThreadPoolExecutor(max_workers=6) as executor:
 
             futures = [
                 executor.submit(process_asset, asset)
