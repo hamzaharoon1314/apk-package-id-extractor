@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -62,12 +63,38 @@ def get_release(session: requests.Session, repo: str, release: str) -> dict:
 
 
 def download_file(session: requests.Session, url: str, out_path: Path) -> None:
+
     with session.get(url, stream=True, timeout=300) as r:
+
         r.raise_for_status()
+
+        total = int(r.headers.get("content-length", 0))
+        downloaded = 0
+
         with out_path.open("wb") as f:
+
             for chunk in r.iter_content(chunk_size=1024 * 1024):
+
                 if chunk:
+
                     f.write(chunk)
+
+                    downloaded += len(chunk)
+
+                    if total > 0:
+
+                        percent = downloaded / total * 100
+
+                        print(
+                            f"\r{out_path.name}: "
+                            f"{downloaded // (1024*1024)}MB / "
+                            f"{total // (1024*1024)}MB "
+                            f"({percent:.1f}%)",
+                            end="",
+                            flush=True
+                        )
+
+        print()
 
 
 def extract_badging(aapt: str, apk_path: Path) -> tuple[str, str]:
@@ -190,11 +217,13 @@ def main() -> int:
 
             out_path = download_dir / asset_name
 
-            print(f"\nDownloading: {asset_name}")
+            start = time.time()
+            print(f"\nDownloading: {asset_name}", flush=True)
 
             download_file(session, url, out_path)
 
-            print(f"Extracting package ID...")
+            
+            print(f"Extracting package ID...", flush=True)
 
             try:
                 app_name, package_id = extract_badging(aapt, out_path)
@@ -208,11 +237,12 @@ def main() -> int:
                         download_url=url,
                     )
                 )
-
-                print(f"✓ {package_id}")
+                
+                elapsed = time.time() - start
+                print(f"✓ {package_id} ({elapsed:.2f}s)", flush=True)
 
             except Exception as e:
-                print(f"✗ Failed: {e}")
+                print(f"✗ Failed: {e}", flush=True)
 
     finally:
         if tmp_dir_obj is not None:
