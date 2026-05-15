@@ -1,111 +1,75 @@
-# APK Package ID Extractor
+# APK Package ID & Config Extractor
 
-Automatically download APK assets from GitHub Releases, extract Android package IDs using `aapt`, and generate Markdown documentation for every scanned repository.
+Automatically scan GitHub release APKs, extract Android package IDs, and generate ready-to-use configs for Discoverium and Obtainium.
 
-This project is designed for repositories that publish APKs but do not provide package names / application IDs.
+The workflow downloads APK assets from a GitHub release, extracts metadata using `aapt`, and publishes:
+- Package IDs
+- App metadata
+- SHA256 hashes
+- App icons
+- Discoverium/Obtainium configs
+
+> [!IMPORTANT]
+> Looking for generated APK package IDs, Discoverium configs, Obtainium-compatible JSON, and tracked repositories?
+>
+> Go to:
+>
+> [`docs/README.md`](./docs/README.md)
+>
+> This index contains all scanned repositories with direct links to generated metadata pages and configs.
 
 ---
 
 # Features
 
-- Downloads all `.apk` assets from a GitHub release
-- Extracts:
-  - Package ID
-  - App name
-  - APK filename
-  - File size
-- Generates Markdown docs automatically
-- Updates existing repo docs automatically
-- GitHub Actions support
-- No local Android SDK setup required for users
-- Supports any public GitHub repo with APK releases
+- Extract package IDs from APK files
+- Generate Discoverium configs
+- Generate Obtainium-compatible JSON
+- Extract APK icons
+- Generate markdown app index
+- SHA256 hashing
+- Parallel APK processing
+- Automatic GitHub Actions workflow
+- Supports large APK release repositories
 
 ---
 
-# Example Output
+# Output Structure
 
-| App name | Asset file | Package ID |
-|---|---|---|
-| Instagram | instagram-arm64-v8a.apk | com.instagram.android |
-| Discord | discord-revenge.apk | com.discord |
-| Duolingo | duolingo-revanced.apk | com.duolingo |
+```text
+docs/
+├── repo-name.md
+├── json/
+├── discoverium/
+└── icons/
+```
 
 ---
 
-# Generated Documentation
+# Generated Data
 
-All extracted package lists are stored inside:
-
-```text
-/docs
-```
-
-You can browse all generated package lists here:
-
-```text
-https://github.com/YOUR_USERNAME/YOUR_REPO/tree/main/docs
-```
-
-Example generated file:
-
-```text
-docs/NoName-exe__revanced-extended.md
-```
+Each scanned APK includes:
+- App name
+- Package ID
+- APK filename
+- Version
+- SHA256
+- Play Store link
+- Discoverium/Obtainium config
 
 ---
 
 # How It Works
 
-1. GitHub Actions runs the Python script
-2. Script fetches release assets from a target repo
-3. APKs are downloaded temporarily
-4. `aapt dump badging` extracts package IDs
-5. Markdown documentation is generated
-6. Docs are committed back automatically
+1. Enter a GitHub repository
+2. Workflow downloads release APKs
+3. APK metadata is extracted using `aapt`
+4. Configs and markdown files are generated automatically
+5. Results are pushed to the repository
 
----
+## 1. Run The Workflow
 
-# Requirements
-
-Users only need:
-
-- A GitHub account
-- Forked repository
-- GitHub Actions enabled
-
-No local setup required if using GitHub Actions.
-
----
-
-# Setup Guide
-
-## 1. Fork This Repository
-
-Click:
-
-```text
-Fork
-```
-
-at the top-right of this repository.
-
-This creates your own copy.
-
----
-
-## 2. Enable GitHub Actions
-
-Inside your fork:
-
-```text
-Actions → Enable Workflows
-```
-
----
-
-## 3. Run The Extractor
-
-Go to:
+Open:
 
 ```text
 Actions
@@ -125,7 +89,7 @@ Run workflow
 
 ---
 
-## 4. Enter Repository Name
+## 2. Enter Repository
 
 Use format:
 
@@ -136,200 +100,29 @@ OWNER/REPO
 Example:
 
 ```text
-NoName-exe/revanced-extended
+NoName-Person/repoName
 ```
 
-NOT:
+# Example Use Cases
 
-```text
-https://github.com/OWNER/REPO
-```
+- APK package identification
+- Discoverium repositories
+- Obtainium sources
+- APK metadata indexing
+- Android app tracking
+- Modded APK repositories
+- Automation workflows
 
 ---
 
-## 5. Optional Release Tag
-
-You may specify:
-
-```text
-latest
-```
-
-or a specific tag:
-
-```text
-v1.2.3
-```
-
----
-
-# Output Files
-
-Generated markdown files are stored in:
-
-```text
-/docs
-```
-
-File naming format:
-
-```text
-OWNER__REPO.md
-```
-
-Example:
-
-```text
-NoName-exe__revanced-extended.md
-```
-
----
-
-# Updating Existing Files
-
-Running the workflow again for the same repo:
-
-- Updates the existing markdown file
-- Replaces outdated package IDs
-- Adds newly released APKs
-
----
-
-# Supported APK Sources
-
-Works with repositories that publish APKs through:
-
-- GitHub Releases
-- Release Assets
-
----
-
-# Local Usage (Optional)
-
-Advanced users may run locally.
-
-## Install Requirements
-
-### Python
-
-Install:
-
-```text
-Python 3.10+
-```
-
-### Android Build Tools
-
-Install Android SDK Build Tools containing:
-
-```text
-aapt
-```
-
----
-
-## Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-## Run Script
-
-```bash
-python scripts/extract_apk_package_ids.py
-```
-
-Example:
-
-```bash
-python scripts/extract_apk_package_ids.py \
-  --repo "NoName-exe/revanced-extended"
-```
-
----
-
-# Repository Structure
-
-```text
-.
-├── .github/workflows/
-│   └── update-apk-package-ids.yml
-├── docs/
-├── scripts/
-│   └── extract_apk_package_ids.py
-├── requirements.txt
-└── README.md
-```
-
----
-
-# How Package IDs Are Extracted
-
-Uses:
-
-```bash
-aapt dump badging app.apk
-```
-
-Example output:
-
-```text
-package: name='com.instagram.android'
-```
-
-This reads the Android manifest directly from the APK.
-
----
-
-# Why This Exists
-
-Many APK release repositories publish modified APKs without package IDs.
-
-This tool helps users:
-
-- Verify package names
-- Identify spoofed apps
-- Create automation scripts
-- Build APK indexes
-- Support package manager tooling
-
----
-
-# Possible Future Features
-
-- SHA256 export
-- JSON output
-- HTML website generation
-- APK icon extraction
-- Play Store links
-- Multi-release scanning
-- VirusTotal integration
-- Telegram/Discord notifications
-- Parallel downloads
-
----
-
-# Contributing
-
-Pull requests are welcome.
-
-Ideas, fixes, and optimizations are appreciated.
-
----
-
-# Disclaimer
-
-This repository does not host APKs permanently.
-
-APK files are downloaded temporarily during processing.
-
-All rights belong to their respective owners.
+# Notes
+
+- APKs are downloaded temporarily during processing
+- XML adaptive icons are skipped automatically
+- Only public GitHub repositories are supported
 
 ---
 
 # License
 
-MIT License
+MIT
