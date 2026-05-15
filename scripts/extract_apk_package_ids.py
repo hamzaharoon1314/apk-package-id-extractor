@@ -2,73 +2,108 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import os
 import re
 import shutil
 import subprocess
-import sys
-import time
 import tempfile
+import time
+
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 import requests
 
+
 PKG_RE = re.compile(r"package:\s+name='([^']+)'")
+VERSION_RE = re.compile(r"versionName='([^']+)'")
 LABEL_RE = re.compile(r"application-label(?:-[^:]+)?:'([^']+)'")
+ICON_RE = re.compile(r"application-icon-[^:]+:'([^']+)'")
+
 
 @dataclass
 class ApkInfo:
     asset_name: str
     app_name: str
     package_id: str
+    version_name: str
+    sha256: str
     size_bytes: int
     download_url: str
+    play_store_url: str
+    icon_path: str
+
+
+def sanitize_filename(name: str) -> str:
+    return name.replace("/", "__").replace("\\", "__")
 
 
 def find_aapt() -> str:
+
     env_path = os.environ.get("AAPT_PATH")
+
     if env_path and Path(env_path).exists():
         return env_path
 
     for candidate in ("aapt", "aapt.exe"):
+
         found = shutil.which(candidate)
+
         if found:
             return found
 
     raise SystemExit(
-        "aapt not found. Install Android build-tools and set AAPT_PATH, "
-        "or put aapt on PATH."
+        "aapt not found. Install Android build-tools and set AAPT_PATH."
     )
 
 
 def github_session(token: Optional[str]) -> requests.Session:
+
     s = requests.Session()
-    s.headers.update({"Accept": "application/vnd.github+json"})
+
+    s.headers.update({
+        "Accept": "application/vnd.github+json"
+    })
+
     if token:
-        s.headers.update({"Authorization": f"Bearer {token}"})
+        s.headers.update({
+            "Authorization": f"Bearer {token}"
+        })
+
     return s
 
 
-def get_release(session: requests.Session, repo: str, release: str) -> dict:
+def get_release(session: requests.Session, repo: str, release: str):
+
     if release == "latest":
         url = f"https://api.github.com/repos/{repo}/releases/latest"
+
     else:
         url = f"https://api.github.com/repos/{repo}/releases/tags/{release}"
 
     r = session.get(url, timeout=60)
+
     r.raise_for_status()
+
     return r.json()
 
 
-def download_file(session: requests.Session, url: str, out_path: Path) -> None:
+def download_file(
+    session: requests.Session,
+    url: str,
+    out_path: Path
+):
 
     with session.get(url, stream=True, timeout=300) as r:
 
         r.raise_for_status()
 
         total = int(r.headers.get("content-length", 0))
+
         downloaded = 0
 
         with out_path.open("wb") as f:
@@ -97,52 +132,136 @@ def download_file(session: requests.Session, url: str, out_path: Path) -> None:
         print()
 
 
-def extract_badging(aapt: str, apk_path: Path) -> tuple[str, str]:
+def calculate_sha256(path: Path) -> str:
+
+    sha256 = hashlib.sha256()
+
+    with path.open("rb") as f:
+
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            sha256.update(chunk)
+
+    return sha256.hexdigest()
+
+
+def extract_badging(aapt: str, apk_path: Path):
+
     proc = subprocess.run(
         [aapt, "dump", "badging", str(apk_path)],
         capture_output=True,
         text=True,
     )
+
     if proc.returncode != 0:
-        raise RuntimeError(proc.stderr.strip() or f"aapt failed on {apk_path.name}")
+        raise RuntimeError(proc.stderr.strip())
 
     stdout = proc.stdout
+
     pkg_match = PKG_RE.search(stdout)
+
     if not pkg_match:
-        raise RuntimeError(f"Could not find package name in {apk_path.name}")
+        raise RuntimeError("Package ID not found")
 
+    version_match = VERSION_RE.search(stdout)
     label_match = LABEL_RE.search(stdout)
+    icon_match = ICON_RE.search(stdout)
+
     package_id = pkg_match.group(1)
-    app_name = label_match.group(1) if label_match else apk_path.stem
 
-    return app_name, package_id
+    version_name = (
+        version_match.group(1)
+        if version_match else "Unknown"
+    )
+
+    app_name = (
+        label_match.group(1)
+        if label_match else apk_path.stem
+    )
+
+    icon_path = (
+        icon_match.group(1)
+        if icon_match else ""
+    )
+
+    return (
+        app_name,
+        package_id,
+        version_name,
+        icon_path
+    )
 
 
-def markdown_table(rows: list[ApkInfo], repo: str, release: str) -> str:
+def extract_icon(
+    apk_path: Path,
+    internal_icon_path: str,
+    output_icon: Path
+):
+
+    if not internal_icon_path:
+        return False
+
+    try:
+
+        with output_icon.open("wb") as f:
+
+            subprocess.run(
+                [
+                    "unzip",
+                    "-p",
+                    str(apk_path),
+                    internal_icon_path
+                ],
+                stdout=f,
+                stderr=subprocess.DEVNULL,
+                check=True
+            )
+
+        return True
+
+    except Exception:
+        return False
+
+
+def markdown_table(rows, repo, release):
+
     lines = []
+
     lines.append(f"# APK package IDs for `{repo}`")
     lines.append("")
     lines.append(f"Release source: `{release}`")
     lines.append("")
-    lines.append("| App name | Asset file | Package ID | Size |")
-    lines.append("|---|---|---:|---:|")
-    for row in rows:
-        size_mb = row.size_bytes / (1024 * 1024)
-        lines.append(
-            f"| {row.app_name} | `{row.asset_name}` | `{row.package_id}` | {size_mb:.1f} MB |"
-        )
-    lines.append("")
-    lines.append(f"_Generated automatically from GitHub release assets._")
-    lines.append("")
-    return "\n".join(lines)
 
-def sanitize_filename(name: str) -> str:
-    return name.replace("/", "__").replace("\\", "__")
+    lines.append(
+        "| Icon | App | Package ID | Version | SHA256 | Play Store |"
+    )
+
+    lines.append(
+        "|---|---|---|---|---|---|"
+    )
+
+    for row in rows:
+
+        sha_short = row.sha256[:16] + "..."
+
+        lines.append(
+            f"| ![]({row.icon_path}) "
+            f"| {row.app_name} "
+            f"| `{row.package_id}` "
+            f"| `{row.version_name}` "
+            f"| `{sha_short}` "
+            f"| [Link]({row.play_store_url}) |"
+        )
+
+    lines.append("")
+    lines.append("_Generated automatically._")
+
+    return "\n".join(lines)
 
 
 def main() -> int:
+
     parser = argparse.ArgumentParser(
-        description="Download APK assets from a GitHub release and extract package IDs."
+        description="Extract APK package IDs from GitHub releases."
     )
 
     parser.add_argument(
@@ -153,37 +272,61 @@ def main() -> int:
     parser.add_argument(
         "--release",
         default="latest",
-        help="Release tag name or 'latest'"
+        help="Release tag or latest"
     )
 
     parser.add_argument(
         "--keep-downloads",
-        action="store_true",
-        help="Keep downloaded APKs"
+        action="store_true"
     )
 
     args = parser.parse_args()
 
-    # Ask interactively if not provided
     repo = args.repo
 
     if not repo:
-        repo = input("Enter GitHub repo (owner/repo): ").strip()
+        repo = input(
+            "Enter GitHub repo (owner/repo): "
+        ).strip()
 
     if "/" not in repo:
-        print("Invalid repo format. Example: ReVanced/revanced-manager")
+
+        print(
+            "Invalid repo format. Example: ReVanced/revanced-manager"
+        )
+
         return 1
 
     safe_repo_name = sanitize_filename(repo)
 
-    # Auto-generate markdown filename
-    output_path = Path("docs") / f"{safe_repo_name}.md"
+    markdown_output = (
+        Path("docs") / f"{safe_repo_name}.md"
+    )
+
+    json_output = (
+        Path("docs/json") / f"{safe_repo_name}.json"
+    )
+
+    icons_dir = Path("docs/icons")
+
+    icons_dir.mkdir(parents=True, exist_ok=True)
+
+    json_output.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
 
     token = os.environ.get("GITHUB_TOKEN")
+
     session = github_session(token)
 
     print(f"Fetching release data for {repo}...")
-    release_data = get_release(session, repo, args.release)
+
+    release_data = get_release(
+        session,
+        repo,
+        args.release
+    )
 
     assets = release_data.get("assets", [])
 
@@ -193,71 +336,182 @@ def main() -> int:
     ]
 
     if not apk_assets:
+
         print("No APK assets found.")
+
         return 1
 
     aapt = find_aapt()
 
     download_dir = Path("downloads")
+
     tmp_dir_obj = None
 
     if args.keep_downloads:
-        download_dir.mkdir(parents=True, exist_ok=True)
+
+        download_dir.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
     else:
+
         tmp_dir_obj = tempfile.TemporaryDirectory()
+
         download_dir = Path(tmp_dir_obj.name)
 
     results = []
 
+    def process_asset(asset):
+
+        asset_name = asset["name"]
+
+        url = asset["browser_download_url"]
+
+        out_path = download_dir / asset_name
+
+        start = time.time()
+
+        print(f"\nDownloading: {asset_name}", flush=True)
+
+        download_file(
+            session,
+            url,
+            out_path
+        )
+
+        print(
+            "Extracting metadata...",
+            flush=True
+        )
+
+        (
+            app_name,
+            package_id,
+            version_name,
+            internal_icon_path
+        ) = extract_badging(
+            aapt,
+            out_path
+        )
+
+        sha256 = calculate_sha256(out_path)
+
+        icon_filename = f"{package_id}.png"
+
+        icon_output = icons_dir / icon_filename
+
+        extract_icon(
+            out_path,
+            internal_icon_path,
+            icon_output
+        )
+
+        play_store_url = (
+            "https://play.google.com/store/apps/details"
+            f"?id={package_id}"
+        )
+
+        elapsed = time.time() - start
+
+        print(
+            f"✓ {package_id} ({elapsed:.2f}s)",
+            flush=True
+        )
+
+        return ApkInfo(
+            asset_name=asset_name,
+            app_name=app_name,
+            package_id=package_id,
+            version_name=version_name,
+            sha256=sha256,
+            size_bytes=int(asset.get("size", 0)),
+            download_url=url,
+            play_store_url=play_store_url,
+            icon_path=f"icons/{icon_filename}"
+        )
+
     try:
-        for asset in sorted(apk_assets, key=lambda x: x["name"].lower()):
 
-            asset_name = asset["name"]
-            url = asset["browser_download_url"]
+        with ThreadPoolExecutor(max_workers=4) as executor:
 
-            out_path = download_dir / asset_name
-
-            start = time.time()
-            print(f"\nDownloading: {asset_name}", flush=True)
-
-            download_file(session, url, out_path)
-
-            
-            print(f"Extracting package ID...", flush=True)
-
-            try:
-                app_name, package_id = extract_badging(aapt, out_path)
-
-                results.append(
-                    ApkInfo(
-                        asset_name=asset_name,
-                        app_name=app_name,
-                        package_id=package_id,
-                        size_bytes=int(asset.get("size", 0)),
-                        download_url=url,
-                    )
+            futures = [
+                executor.submit(process_asset, asset)
+                for asset in sorted(
+                    apk_assets,
+                    key=lambda x: x["name"].lower()
                 )
-                
-                elapsed = time.time() - start
-                print(f"✓ {package_id} ({elapsed:.2f}s)", flush=True)
+            ]
 
-            except Exception as e:
-                print(f"✗ Failed: {e}", flush=True)
+            for future in as_completed(futures):
+
+                try:
+                    results.append(
+                        future.result()
+                    )
+
+                except Exception as e:
+                    print(
+                        f"✗ {e}",
+                        flush=True
+                    )
 
     finally:
+
         if tmp_dir_obj is not None:
             tmp_dir_obj.cleanup()
 
-    md = markdown_table(results, repo, args.release)
+    results.sort(
+        key=lambda x: x.app_name.lower()
+    )
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    markdown_output.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
 
-    output_path.write_text(md, encoding="utf-8")
+    md = markdown_table(
+        results,
+        repo,
+        args.release
+    )
 
-    print(f"\nMarkdown updated:")
-    print(output_path)
+    markdown_output.write_text(
+        md,
+        encoding="utf-8"
+    )
+
+    json_output.write_text(
+        json.dumps(
+            [
+                {
+                    "app_name": r.app_name,
+                    "asset_name": r.asset_name,
+                    "package_id": r.package_id,
+                    "version_name": r.version_name,
+                    "sha256": r.sha256,
+                    "play_store_url": r.play_store_url,
+                    "download_url": r.download_url,
+                    "icon_path": r.icon_path,
+                }
+                for r in results
+            ],
+            indent=2,
+            ensure_ascii=False
+        ),
+        encoding="utf-8"
+    )
+
+    print("\nMarkdown updated:")
+    print(markdown_output)
+
+    print("\nJSON updated:")
+    print(json_output)
+
+    print("\nDone.")
 
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
