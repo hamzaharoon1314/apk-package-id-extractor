@@ -1,9 +1,18 @@
 name: Update APK package IDs
 
 on:
-  release:
-    types: [published, edited]
   workflow_dispatch:
+    inputs:
+      repo:
+        description: "GitHub repo (owner/repo)"
+        required: true
+        type: string
+
+      release:
+        description: "Release tag (optional, default: latest)"
+        required: false
+        default: "latest"
+        type: string
 
 permissions:
   contents: write
@@ -24,47 +33,68 @@ jobs:
       - name: Install Android build tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y openjdk-17-jre-headless wget unzip
+
+          sudo apt-get install -y \
+            openjdk-17-jre-headless \
+            wget \
+            unzip
+
           export ANDROID_SDK_ROOT="$HOME/android-sdk"
+
           mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
 
           cd /tmp
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-          unzip -q cmdline-tools.zip -d "$ANDROID_SDK_ROOT/cmdline-tools"
-          mv "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" "$ANDROID_SDK_ROOT/cmdline-tools/latest"
 
-          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" --sdk_root="$ANDROID_SDK_ROOT" "build-tools;34.0.0"
+          wget -q \
+            https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip \
+            -O cmdline-tools.zip
+
+          unzip -q cmdline-tools.zip \
+            -d "$ANDROID_SDK_ROOT/cmdline-tools"
+
+          mv \
+            "$ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools" \
+            "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+
+          yes | \
+            "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
+            --sdk_root="$ANDROID_SDK_ROOT" \
+            "build-tools;34.0.0"
 
           echo "AAPT_PATH=$(find "$ANDROID_SDK_ROOT/build-tools" -name aapt -type f | head -n 1)" >> "$GITHUB_ENV"
 
       - name: Install Python dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
 
       - name: Generate markdown
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          if [ -n "${RELEASE_TAG}" ]; then
-            TAG="${RELEASE_TAG}"
-          else
-            TAG="latest"
-          fi
+
+          REPO="${{ github.event.inputs.repo }}"
+          RELEASE="${{ github.event.inputs.release }}"
+
+          echo "Target repo: $REPO"
+          echo "Target release: $RELEASE"
 
           python scripts/extract_apk_package_ids.py \
-            --repo "${{ github.repository }}" \
-            --release "$TAG" \
-            --output docs/apk-package-ids.md
+            --repo "$REPO" \
+            --release "$RELEASE"
 
       - name: Commit and push if changed
         run: |
+
           if git diff --quiet; then
-            echo "No changes."
+            echo "No changes detected."
             exit 0
           fi
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/apk-package-ids.md
+
+          git add docs/*.md
+
           git commit -m "Update APK package IDs"
+
           git push

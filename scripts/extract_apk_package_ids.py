@@ -109,89 +109,125 @@ def markdown_table(rows: list[ApkInfo], repo: str, release: str) -> str:
     lines.append("")
     return "\n".join(lines)
 
+def sanitize_filename(name: str) -> str:
+    return name.replace("/", "__").replace("\\", "__")
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Download APK assets from a GitHub release and extract package IDs."
     )
-    parser.add_argument("--repo", required=True, help="owner/repo")
+
+    parser.add_argument(
+        "--repo",
+        help="GitHub repo in owner/repo format"
+    )
+
     parser.add_argument(
         "--release",
         default="latest",
-        help="Release tag name or 'latest' (default: latest)",
+        help="Release tag name or 'latest'"
     )
-    parser.add_argument(
-        "--output",
-        default="apk-package-ids.md",
-        help="Markdown output path",
-    )
+
     parser.add_argument(
         "--keep-downloads",
         action="store_true",
-        help="Keep downloaded APKs in ./downloads",
+        help="Keep downloaded APKs"
     )
+
     args = parser.parse_args()
+
+    # Ask interactively if not provided
+    repo = args.repo
+
+    if not repo:
+        repo = input("Enter GitHub repo (owner/repo): ").strip()
+
+    if "/" not in repo:
+        print("Invalid repo format. Example: ReVanced/revanced-manager")
+        return 1
+
+    safe_repo_name = sanitize_filename(repo)
+
+    # Auto-generate markdown filename
+    output_path = Path("docs") / f"{safe_repo_name}.md"
 
     token = os.environ.get("GITHUB_TOKEN")
     session = github_session(token)
-    release_data = get_release(session, args.repo, args.release)
+
+    print(f"Fetching release data for {repo}...")
+    release_data = get_release(session, repo, args.release)
 
     assets = release_data.get("assets", [])
+
     apk_assets = [
         a for a in assets
         if a.get("name", "").lower().endswith(".apk")
     ]
 
     if not apk_assets:
-        print("No APK assets found in this release.", file=sys.stderr)
+        print("No APK assets found.")
         return 1
 
     aapt = find_aapt()
 
     download_dir = Path("downloads")
     tmp_dir_obj = None
+
     if args.keep_downloads:
         download_dir.mkdir(parents=True, exist_ok=True)
     else:
         tmp_dir_obj = tempfile.TemporaryDirectory()
         download_dir = Path(tmp_dir_obj.name)
 
-    results: list[ApkInfo] = []
+    results = []
 
     try:
         for asset in sorted(apk_assets, key=lambda x: x["name"].lower()):
+
             asset_name = asset["name"]
             url = asset["browser_download_url"]
+
             out_path = download_dir / asset_name
 
-            print(f"Downloading {asset_name}...")
+            print(f"\nDownloading: {asset_name}")
+
             download_file(session, url, out_path)
 
-            print(f"Extracting package ID from {asset_name}...")
-            app_name, package_id = extract_badging(aapt, out_path)
+            print(f"Extracting package ID...")
 
-            results.append(
-                ApkInfo(
-                    asset_name=asset_name,
-                    app_name=app_name,
-                    package_id=package_id,
-                    size_bytes=int(asset.get("size", out_path.stat().st_size)),
-                    download_url=url,
+            try:
+                app_name, package_id = extract_badging(aapt, out_path)
+
+                results.append(
+                    ApkInfo(
+                        asset_name=asset_name,
+                        app_name=app_name,
+                        package_id=package_id,
+                        size_bytes=int(asset.get("size", 0)),
+                        download_url=url,
+                    )
                 )
-            )
+
+                print(f"✓ {package_id}")
+
+            except Exception as e:
+                print(f"✗ Failed: {e}")
 
     finally:
         if tmp_dir_obj is not None:
             tmp_dir_obj.cleanup()
 
-    md = markdown_table(results, args.repo, args.release)
-    output_path = Path(args.output)
+    md = markdown_table(results, repo, args.release)
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
     output_path.write_text(md, encoding="utf-8")
 
-    print(f"Wrote {output_path}")
-    return 0
+    print(f"\nMarkdown updated:")
+    print(output_path)
 
+    return 0
 
 if __name__ == "__main__":
     raise SystemExit(main())
