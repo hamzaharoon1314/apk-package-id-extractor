@@ -340,7 +340,7 @@ def markdown_table(rows, repo, release):
             f"| {row.package_id} "
             f"| {row.asset_name} "
             f"| {row.version_name} "
-            f"| [Play Store]({row.play_store_url}) "
+            f"| {'[Play Store](' + row.play_store_url + ')' if row.play_store_url else 'N/A'} "
             f"| [JSON Config](./discoverium/{row.package_id}__{safe_asset_name}.json) |"
         )
 
@@ -362,6 +362,40 @@ def markdown_table(rows, repo, release):
     lines.append("_Automatically generated from GitHub APK release assets with package IDs, SHA256 hashes, and Discoverium import links._")
 
     return "\n".join(lines)
+
+def generate_play_store_url(package_id: str) -> str:
+
+    package_id = package_id.strip()
+
+    return (
+        "https://play.google.com/store/apps/details?id="
+        + urllib.parse.quote(package_id)
+    )
+
+
+def play_store_exists(
+    session: requests.Session,
+    package_id: str
+) -> bool:
+
+    url = generate_play_store_url(package_id)
+
+    try:
+
+        r = session.get(
+            url,
+            timeout=15,
+            allow_redirects=True
+        )
+
+        return (
+            r.status_code == 200
+            and "Item not found" not in r.text
+        )
+
+    except Exception:
+
+        return False
 
 
 def main() -> int:
@@ -421,7 +455,17 @@ def main() -> int:
     )
 
     
+    package_id = package_id.strip()
 
+    if play_store_exists(session, package_id):
+
+        play_store_url = generate_play_store_url(
+            package_id
+        )
+
+    else:
+
+        play_store_url = ""
     
 
     json_output.parent.mkdir(
@@ -516,11 +560,6 @@ def main() -> int:
             .replace("\\", "_")
         )
         
-
-        play_store_url = (
-            "https://play.google.com/store/apps/details"
-            f"?id={package_id}"
-        )
         
         row_data = ApkInfo(
             asset_name=asset_name,
