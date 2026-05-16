@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+[#!/usr/bin/env python3
 from __future__ import annotations
 
 import argparse
@@ -215,34 +215,60 @@ def generate_discoverium_config(
 
         "name": row.app_name,
 
-        "installedVersion": "all",
+        "installedVersion": "",
 
-        "latestVersion": "all",
+        "latestVersion": row.version_name,
 
-        "apkUrls": [
+        "apkUrls": json.dumps([
             [
                 primary_name,
                 row.download_url
             ]
-        ],
+        ]),
 
-        "otherAssetUrls": other_assets,
+        "otherAssetUrls": json.dumps(
+            other_assets
+        ),
 
         "preferredApkIndex": 0,
 
-        "additionalSettings": {
+        "additionalSettings": json.dumps({
 
             "includePrereleases": False,
 
             "fallbackToOlderReleases": True,
 
+            "filterReleaseTitlesByRegEx": "",
+
+            "filterReleaseNotesByRegEx": "",
+
+            "verifyLatestTag": False,
+
             "sortMethodChoice": "date",
 
-            "useLatestAssetDateAsReleaseDate": True,
+            "useLatestAssetDateAsReleaseDate": False,
+
+            "releaseTitleAsVersion": False,
+
+            "trackOnly": False,
+
+            "versionExtractionRegEx": "",
+
+            "matchGroupToUse": "",
+
+            "versionDetection": True,
+
+            "releaseDateAsVersion": False,
+
+            "useVersionCodeAsOSVersion": False,
 
             "apkFilterRegEx": (
-                primary_name.replace(".apk", "")
+                "^" +
+                re.escape(primary_name)
+                    .replace("\\.apk", ".*\\\\.apk$")
             ),
+
+            "invertAPKFilter": False,
 
             "autoApkFilterByArch": True,
 
@@ -250,16 +276,32 @@ def generate_discoverium_config(
 
             "appAuthor": repo.split("/")[0],
 
-            "allowInsecure": False,
-        },
+            "shizukuPretendToBeGooglePlay": False,
 
-        "lastUpdateCheck": int(time.time() * 1000000),
+            "allowInsecure": False,
+
+            "exemptFromBackgroundUpdates": False,
+
+            "skipUpdateNotifications": False,
+
+            "about": "",
+
+            "refreshBeforeDownload": False,
+
+            "dontSortReleasesList": False
+        }),
+
+        "lastUpdateCheck": int(
+            time.time() * 1000000
+        ),
 
         "pinned": False,
 
         "categories": [],
 
-        "changeLog": "",
+        "releaseDate": None,
+
+        "changeLog": None,
 
         "overrideSource": None,
 
@@ -623,4 +665,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main())]
