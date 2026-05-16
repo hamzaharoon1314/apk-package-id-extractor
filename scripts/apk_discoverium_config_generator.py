@@ -22,7 +22,23 @@ PKG_RE = re.compile(r"package:\s+name='([^']+)'")
 VERSION_RE = re.compile(r"versionName='([^']+)'")
 LABEL_RE = re.compile(r"application-label(?:-[^:]+)?:'([^']+)'")
 
-
+def normalize_repo(value: str) -> str:
+    """Accept either 'owner/repo' or any GitHub URL form and return 'owner/repo'."""
+    value = value.strip().rstrip("/")
+    # Strip common GitHub URL prefixes
+    for prefix in (
+        "https://github.com/",
+        "http://github.com/",
+        "github.com/",
+    ):
+        if value.lower().startswith(prefix):
+            value = value[len(prefix):]
+            break
+    # Drop any trailing path (tree/main, releases, etc.)
+    parts = value.split("/")
+    if len(parts) < 2:
+        raise SystemExit(f"Cannot parse repo from: {value!r}")
+    return f"{parts[0]}/{parts[1]}"
 
 @dataclass
 class ApkInfo:
@@ -436,15 +452,13 @@ def main() -> int:
 
     if not repo:
         repo = input(
-            "Enter GitHub repo (owner/repo): "
+            "Enter GitHub repo (owner/repo or GitHub URL): "
         ).strip()
 
-    if "/" not in repo:
-
-        print(
-            "Invalid repo format. Example: UserName/RepoName"
-        )
-
+    try:
+        repo = normalize_repo(repo)
+    except SystemExit as e:
+        print(f"Invalid input: {e}")
         return 1
 
     safe_repo_name = sanitize_filename(repo)
