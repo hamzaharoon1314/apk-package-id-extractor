@@ -233,7 +233,7 @@ def generate_discoverium_config(
 
         "installedVersion": "",
 
-        "latestVersion": row.version_name,
+        "latestVersion": "",
 
         "apkUrls": json.dumps([
             [
@@ -262,7 +262,7 @@ def generate_discoverium_config(
 
             "sortMethodChoice": "date",
 
-            "useLatestAssetDateAsReleaseDate": False,
+            "useLatestAssetDateAsReleaseDate": True,
 
             "releaseTitleAsVersion": False,
 
@@ -272,9 +272,9 @@ def generate_discoverium_config(
 
             "matchGroupToUse": "",
 
-            "versionDetection": True,
+            "versionDetection": False,
 
-            "releaseDateAsVersion": False,
+            "releaseDateAsVersion": True,
 
             "useVersionCodeAsOSVersion": False,
 
