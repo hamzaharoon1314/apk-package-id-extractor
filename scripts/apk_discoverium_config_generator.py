@@ -130,6 +130,7 @@ def download_file(
         print()
 
 
+
 def calculate_sha256(path: Path) -> str:
 
     sha256 = hashlib.sha256()
@@ -148,6 +149,7 @@ def extract_badging(aapt: str, apk_path: Path):
         [aapt, "dump", "badging", str(apk_path)],
         capture_output=True,
         text=True,
+        timeout=120,
     )
 
     if proc.returncode != 0:
@@ -334,11 +336,16 @@ def markdown_table(rows, repo, release):
             .replace("/", "_")
             .replace("\\", "_")
         )
+
+        safe_display_name = (
+            row.asset_name
+            .replace("|", "\\|")
+        )
                 
         lines.append(
             f"| **{row.app_name}** "
             f"| {row.package_id} "
-            f"| {row.asset_name} "
+            f"| {safe_display_name} "
             f"| {row.version_name} "
             f"| {'[Play Store](' + row.play_store_url + ')' if row.play_store_url else 'N/A'} "
             f"| [JSON Config](./discoverium/{row.package_id}__{safe_asset_name}.json) |"
@@ -388,15 +395,18 @@ def play_store_exists(
             allow_redirects=True
         )
 
+        text = r.text.lower()
+
         return (
             r.status_code == 200
-            and "Item not found" not in r.text
+            and "/store/apps/details" in r.url
+            and "item not found" not in text
+            and "requested url was not found" not in text
         )
 
     except Exception:
 
         return False
-
 
 def main() -> int:
 
@@ -439,36 +449,42 @@ def main() -> int:
 
     safe_repo_name = sanitize_filename(repo)
 
+    repo_dir = (
+        Path("docs/repos") / safe_repo_name
+    )
+
+    discoverium_dir = (
+        repo_dir / "discoverium"
+    )
+
+    metadata_dir = (
+        repo_dir / "metadata"
+    )
+
     markdown_output = (
-        Path("docs") / f"{safe_repo_name}.md"
+        repo_dir / "index.md"
     )
 
     json_output = (
-        Path("docs/json") / f"{safe_repo_name}.json"
+        metadata_dir / "repo.json"
     )
-    
-    discoverium_dir = Path("docs/discoverium")
+
+    json_output.parent.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    repo_dir.mkdir(
+        parents=True,
+        exist_ok=True
+    )
 
     discoverium_dir.mkdir(
         parents=True,
         exist_ok=True
     )
 
-    
-    package_id = package_id.strip()
-
-    if play_store_exists(session, package_id):
-
-        play_store_url = generate_play_store_url(
-            package_id
-        )
-
-    else:
-
-        play_store_url = ""
-    
-
-    json_output.parent.mkdir(
+    metadata_dir.mkdir(
         parents=True,
         exist_ok=True
     )
@@ -560,6 +576,17 @@ def main() -> int:
             .replace("\\", "_")
         )
         
+        package_id = package_id.strip()
+
+        if play_store_exists(session, package_id):
+
+            play_store_url = generate_play_store_url(
+                package_id
+            )
+
+        else:
+
+            play_store_url = ""
         
         row_data = ApkInfo(
             asset_name=asset_name,
@@ -664,6 +691,7 @@ def main() -> int:
                     "play_store_url": r.play_store_url,
                     "download_url": r.download_url,
                     "discoverium_file": (
+                        f"../discoverium/"
                         f"{r.package_id}__"
                         f"{r.asset_name.replace('.apk', '').replace('/', '_').replace('\\\\', '_')}.json"
                     ),
@@ -682,16 +710,19 @@ def main() -> int:
     print("\nJSON updated:")
     print(json_output)
     
-    repo_list_path = Path("docs/repos.json")
+    repo_list_path = Path(
+        "docs/repos/repos.json"
+    )
 
-    json_dir = Path("docs/json")
+    repos_root = Path("docs/repos")
 
     repos = sorted([
-        p.stem
-        for p in json_dir.glob("*.json")
+        p.name
+        for p in repos_root.iterdir()
+        if (p / "index.md").exists()
     ])
 
-    (Path("docs/repos.json")).write_text(
+    repo_list_path.write_text(
         json.dumps(repos, indent=2),
         encoding="utf-8"
     )

@@ -82,7 +82,7 @@ jobs:
           echo "Target repo: $REPO"
           echo "Target release: $RELEASE"
 
-          python scripts/extract_apk_package_ids.py \
+          python scripts/apk_discoverium_config_generator.py \
             --repo "$REPO" \
             --release "$RELEASE"
 
