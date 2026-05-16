@@ -3,17 +3,1045 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>APK Repository Index</title>
+  <title>APK Discoverium</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  <link rel="stylesheet" href="style.css">
+    :root {
+      --bg: #07070f;
+      --surface: #0d0d1c;
+      --card: #111121;
+      --card-hover: #161628;
+      --border: #1e1e38;
+      --border-bright: #2a2a50;
+      --accent: #b2ff59;
+      --accent-dim: rgba(178,255,89,0.12);
+      --accent-dim2: rgba(178,255,89,0.06);
+      --blue: #5b8fff;
+      --blue-dim: rgba(91,143,255,0.12);
+      --pink: #ff6eb4;
+      --text: #ddddf5;
+      --text-muted: #7777a0;
+      --text-faint: #44445a;
+      --mono: 'Space Mono', monospace;
+      --sans: 'Syne', sans-serif;
+      --radius: 10px;
+      --radius-lg: 16px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Noise overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.6;
+    }
+
+    /* Grid background */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 60px 60px;
+      opacity: 0.25;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(7,7,15,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .nav-logo {
+      font-family: var(--sans);
+      font-weight: 800;
+      font-size: 1.1rem;
+      letter-spacing: -0.02em;
+      color: var(--accent);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+
+    .nav-logo svg { width: 22px; height: 22px; }
+
+    .nav-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: var(--mono);
+    }
+
+    .nav-breadcrumb .crumb {
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: color 0.15s;
+    }
+    .nav-breadcrumb .crumb:hover { color: var(--text); }
+    .nav-breadcrumb .sep { color: var(--text-faint); }
+    .nav-breadcrumb .current { color: var(--text); }
+
+    /* ── MAIN WRAPPER ── */
+    main {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 2rem 4rem;
+    }
+
+    /* ── PAGES ── */
+    .page { display: none; animation: fadeUp 0.3s ease both; }
+    .page.active { display: block; }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── HERO ── */
+    .hero {
+      padding: 4rem 0 3rem;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent-dim2);
+      border: 1px solid rgba(178,255,89,0.2);
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      padding: 4px 12px;
+      border-radius: 100px;
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      color: var(--text);
+      margin-bottom: 1rem;
+    }
+
+    .hero h1 span { color: var(--accent); }
+
+    .hero p {
+      color: var(--text-muted);
+      font-size: 1rem;
+      max-width: 500px;
+      margin: 0 auto;
+      line-height: 1.6;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+    }
+
+    /* ── SECTION HEADER ── */
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-title {
+      font-size: 0.7rem;
+      font-family: var(--mono);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .section-count {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--accent);
+      background: var(--accent-dim2);
+      border: 1px solid rgba(178,255,89,0.15);
+      padding: 2px 10px;
+      border-radius: 100px;
+    }
+
+    /* ── REPO GRID ── */
+    .repo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    .repo-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .repo-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 2px;
+      background: linear-gradient(90deg, var(--accent), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .repo-card:hover {
+      border-color: var(--border-bright);
+      background: var(--card-hover);
+      transform: translateY(-2px);
+    }
+    .repo-card:hover::before { opacity: 1; }
+
+    .repo-card-icon {
+      width: 44px; height: 44px;
+      background: var(--accent-dim);
+      border: 1px solid rgba(178,255,89,0.2);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+    }
+
+    .repo-card-author {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      letter-spacing: 0.05em;
+    }
+
+    .repo-card-name {
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--text);
+      letter-spacing: -0.01em;
+      margin-bottom: 0.75rem;
+      line-height: 1.3;
+    }
+
+    .repo-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .repo-tag {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .repo-arrow {
+      margin-left: auto;
+      color: var(--text-faint);
+      font-size: 1.2rem;
+      transition: transform 0.2s, color 0.2s;
+    }
+    .repo-card:hover .repo-arrow {
+      transform: translateX(4px);
+      color: var(--accent);
+    }
+
+    /* ── SEARCH BAR ── */
+    .search-wrap {
+      position: relative;
+      margin-bottom: 1.5rem;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      pointer-events: none;
+    }
+
+    #search-input {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      padding: 0.75rem 1rem 0.75rem 2.5rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    #search-input::placeholder { color: var(--text-faint); }
+    #search-input:focus {
+      border-color: var(--border-bright);
+      box-shadow: 0 0 0 3px rgba(178,255,89,0.08);
+    }
+
+    /* ── APP GRID ── */
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1rem;
+    }
+
+    .app-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      transition: border-color 0.2s, background 0.2s;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .app-card:hover {
+      border-color: var(--border-bright);
+      background: var(--card-hover);
+    }
+
+    .app-card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .app-icon {
+      width: 38px; height: 38px;
+      flex-shrink: 0;
+      background: var(--blue-dim);
+      border: 1px solid rgba(91,143,255,0.2);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+    }
+
+    .app-name {
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: var(--text);
+      line-height: 1.3;
+    }
+
+    .app-version {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--accent);
+      background: var(--accent-dim2);
+      border: 1px solid rgba(178,255,89,0.12);
+      padding: 2px 7px;
+      border-radius: 5px;
+      display: inline-block;
+      margin-top: 3px;
+    }
+
+    .app-details {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .app-detail-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-family: var(--mono);
+      font-size: 0.68rem;
+    }
+
+    .app-detail-label {
+      color: var(--text-faint);
+      flex-shrink: 0;
+      width: 60px;
+      padding-top: 1px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .app-detail-value {
+      color: var(--text-muted);
+      word-break: break-all;
+      line-height: 1.4;
+    }
+
+    .app-detail-value.pkg { color: var(--blue); }
+
+    .app-divider {
+      height: 1px;
+      background: var(--border);
+    }
+
+    .app-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 6px 12px;
+      text-decoration: none;
+      letter-spacing: 0.03em;
+      transition: opacity 0.15s, transform 0.1s, background 0.15s;
+      white-space: nowrap;
+    }
+    .btn:active { transform: scale(0.96); }
+
+    .btn-obtainium {
+      background: var(--accent);
+      color: #07070f;
+    }
+    .btn-obtainium:hover { opacity: 0.88; }
+
+    .btn-copy {
+      background: var(--surface);
+      color: var(--text-muted);
+      border: 1px solid var(--border-bright);
+    }
+    .btn-copy:hover { background: var(--card-hover); color: var(--text); }
+    .btn-copy.copied {
+      background: rgba(91,143,255,0.12);
+      color: var(--blue);
+      border-color: rgba(91,143,255,0.25);
+    }
+
+    .btn-store {
+      background: var(--surface);
+      color: var(--text-muted);
+      border: 1px solid var(--border-bright);
+    }
+    .btn-store:hover { background: var(--card-hover); color: var(--text); }
+
+    .btn-github {
+      background: var(--surface);
+      color: var(--text-muted);
+      border: 1px solid var(--border-bright);
+      margin-left: auto;
+    }
+    .btn-github:hover { background: var(--card-hover); color: var(--text); }
+
+    /* ── LOADING ── */
+    .loader {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5rem;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .spinner {
+      width: 32px; height: 32px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .loader-text {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    /* ── EMPTY STATE ── */
+    .empty {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-muted);
+      font-family: var(--mono);
+      font-size: 0.8rem;
+    }
+
+    /* ── REPO PAGE HEADER ── */
+    .repo-header {
+      padding: 2.5rem 0 2rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2rem;
+    }
+
+    .repo-header-author {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .repo-header-name {
+      font-weight: 800;
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin-bottom: 0.75rem;
+    }
+
+    .repo-header-stats {
+      display: flex;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .stat-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .stat-pill strong { color: var(--text); }
+
+    /* ── FILTER CHIPS ── */
+    .filter-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+
+    .chip {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border-bright);
+      background: var(--surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.04em;
+    }
+
+    .chip:hover, .chip.active {
+      background: var(--accent-dim);
+      border-color: rgba(178,255,89,0.3);
+      color: var(--accent);
+    }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--card);
+      border: 1px solid var(--border-bright);
+      border-radius: var(--radius);
+      padding: 0.75rem 1.25rem;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--text);
+      z-index: 1000;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: transform 0.25s, opacity 0.25s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast-icon { color: var(--accent); }
+
+    /* ── ERROR ── */
+    .error-msg {
+      background: rgba(255,80,80,0.08);
+      border: 1px solid rgba(255,80,80,0.2);
+      border-radius: var(--radius);
+      padding: 1rem 1.25rem;
+      font-family: var(--mono);
+      font-size: 0.78rem;
+      color: #ff8080;
+      margin: 1rem 0;
+    }
+
+    /* ── MISC ── */
+    .hidden { display: none !important; }
+
+    @media (max-width: 600px) {
+      nav { padding: 0 1rem; }
+      main { padding: 0 1rem 4rem; }
+      .repo-grid { grid-template-columns: 1fr; }
+      .app-grid { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 <body>
 
-  <h1>APK Repository Index</h1>
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" onclick="goHome()" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="2" width="14" height="20" rx="2"/>
+      <path d="M12 18h.01M8 6h8M8 10h8M8 14h4"/>
+    </svg>
+    Discoverium
+  </a>
+  <div class="nav-breadcrumb" id="breadcrumb"></div>
+</nav>
 
-  <div id="repos"></div>
+<!-- MAIN -->
+<main>
 
-  <script src="app.js"></script>
+  <!-- HOME PAGE -->
+  <div class="page active" id="page-home">
+    <div class="hero">
+      <div class="hero-badge">
+        <svg width="10" height="10" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="currentColor"/></svg>
+        APK Repo Browser
+      </div>
+      <h1>Browse <span>patched</span> APK repos</h1>
+      <p>Explore repositories, view packages, and add apps directly to Obtainium with one click.</p>
+    </div>
 
+    <div class="section-header">
+      <span class="section-title">// Repositories</span>
+      <span class="section-count" id="repo-count">...</span>
+    </div>
+
+    <div id="repo-container">
+      <div class="loader">
+        <div class="spinner"></div>
+        <span class="loader-text">fetching repos...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPO PAGE -->
+  <div class="page" id="page-repo">
+    <div class="repo-header">
+      <div class="repo-header-author">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M2 21v-2a7 7 0 0 1 14 0v2"/></svg>
+        <span id="repo-author-display"></span>
+      </div>
+      <h2 class="repo-header-name" id="repo-name-display"></h2>
+      <div class="repo-header-stats">
+        <div class="stat-pill"><strong id="stat-apps">—</strong> packages</div>
+        <div class="stat-pill"><strong id="stat-unique">—</strong> unique apps</div>
+        <a id="repo-gh-link" href="#" target="_blank" rel="noopener" class="btn btn-github">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.58 2 12.26c0 4.54 2.87 8.39 6.84 9.75.5.09.68-.22.68-.49 0-.24-.01-1.03-.01-1.87-2.51.56-3.04-1.24-3.23-1.58-.39-.66-.86-.83-1.18-.98-.31-.17-.79-.56-.01-.57.74-.01 1.26.69 1.44 1 .84 1.43 2.18.99 2.71.76.08-.59.33-.99.6-1.22-2.08-.24-4.25-1.06-4.25-4.71 0-1.04.36-1.89.96-2.56-.1-.24-.42-1.21.09-2.52 0 0 .79-.26 2.59 1 .75-.21 1.55-.32 2.35-.32.8 0 1.6.11 2.35.32 1.8-1.27 2.59-1 2.59-1 .51 1.31.19 2.28.09 2.52.6.67.96 1.52.96 2.56 0 3.66-2.18 4.47-4.26 4.71.34.29.63.86.63 1.74 0 1.26-.01 2.27-.01 2.59 0 .27.18.58.69.49A10.28 10.28 0 0 0 22 12.26C22 6.58 17.52 2 12 2z"/></svg>
+          GitHub
+        </a>
+      </div>
+    </div>
+
+    <div class="search-wrap">
+      <span class="search-icon">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </span>
+      <input type="search" id="search-input" placeholder="Search by app name or package ID..." oninput="filterApps()">
+    </div>
+
+    <div class="filter-row" id="filter-chips"></div>
+
+    <div class="section-header">
+      <span class="section-title">// Packages</span>
+      <span class="section-count" id="app-count">...</span>
+    </div>
+
+    <div id="app-container">
+      <div class="loader">
+        <div class="spinner"></div>
+        <span class="loader-text">loading packages...</span>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span class="toast-icon">✓</span>
+  <span id="toast-msg">Copied!</span>
+</div>
+
+<script>
+  /* ── STATE ── */
+  let allApps = [];
+  let currentRepo = null;
+  let activeFilter = 'all';
+
+  /* ── ROUTING ── */
+  function goHome() {
+    showPage('home');
+    setBreadcrumb([]);
+    history.pushState({page:'home'}, '', '#');
+  }
+
+  function goRepo(repoId) {
+    currentRepo = repoId;
+    showPage('repo');
+    loadRepo(repoId);
+    const [author, repoName] = parseRepoId(repoId);
+    setBreadcrumb([
+      { label: 'repos', action: goHome },
+      { label: repoName, current: true }
+    ]);
+    history.pushState({page:'repo', repo: repoId}, '', '#repo/' + encodeURIComponent(repoId));
+  }
+
+  window.addEventListener('popstate', (e) => {
+    const s = e.state;
+    if (!s || s.page === 'home') { showPage('home'); setBreadcrumb([]); }
+    else if (s.page === 'repo') { goRepo(s.repo); }
+  });
+
+  /* ── INIT ── */
+  window.addEventListener('DOMContentLoaded', () => {
+    const hash = location.hash;
+    if (hash.startsWith('#repo/')) {
+      const repoId = decodeURIComponent(hash.slice(6));
+      goRepo(repoId);
+    } else {
+      loadHome();
+    }
+  });
+
+  /* ── HELPERS ── */
+  function parseRepoId(id) {
+    const sep = id.indexOf('__');
+    if (sep === -1) return [id, id];
+    return [id.slice(0, sep), id.slice(sep + 2)];
+  }
+
+  function showPage(name) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+  }
+
+  function setBreadcrumb(crumbs) {
+    const el = document.getElementById('breadcrumb');
+    if (!crumbs.length) { el.innerHTML = ''; return; }
+    el.innerHTML = crumbs.map((c, i) => {
+      if (c.current) return `<span class="crumb current">${esc(c.label)}</span>`;
+      return `<span class="crumb" onclick="${c.action.name}()">${esc(c.label)}</span><span class="sep">/</span>`;
+    }).join('');
+  }
+
+  function esc(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    document.getElementById('toast-msg').textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  function appIcon(name) {
+    const icons = {
+      youtube: '▶', music: '♫', instagram: '📸', reddit: '🔺', twitter: '𝕏',
+      tiktok: '♪', facebook: '𝔣', discord: '🎮', twitch: '📡', telegram: '✈',
+      spotify: '🎵', netflix: '🎬', lightroom: '🌅', strava: '🏃', duolingo: '🦉',
+      protonmail: '📧', protonvpn: '🔒', tumblr: '📝', soundcloud: '☁', viber: '📱',
+      photomath: '✖', pixiv: '🖼', bilibili: '📺', adguard: '🛡',
+    };
+    const key = Object.keys(icons).find(k => name.toLowerCase().includes(k));
+    return key ? icons[key] : '📦';
+  }
+
+  /* ── HOME ── */
+  async function loadHome() {
+    const container = document.getElementById('repo-container');
+    try {
+      const res = await fetch('repos.json');
+      if (!res.ok) throw new Error('Failed to fetch repos.json');
+      const repos = await res.json();
+      document.getElementById('repo-count').textContent = repos.length;
+      renderRepos(repos);
+    } catch (err) {
+      container.innerHTML = `<div class="error-msg">⚠ Could not load repos.json — ${esc(err.message)}</div>`;
+    }
+  }
+
+  function renderRepos(repos) {
+    const container = document.getElementById('repo-container');
+    if (!repos.length) {
+      container.innerHTML = '<div class="empty">No repositories found.</div>';
+      return;
+    }
+    container.innerHTML = `<div class="repo-grid">${repos.map(id => {
+      const [author, name] = parseRepoId(id);
+      const displayName = name.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      return `
+        <div class="repo-card" onclick="goRepo('${esc(id)}')">
+          <div class="repo-card-icon">📦</div>
+          <div class="repo-card-author">${esc(author)}</div>
+          <div class="repo-card-name">${esc(displayName)}</div>
+          <div class="repo-card-meta">
+            <span class="repo-tag">github</span>
+            <span class="repo-tag">non-root</span>
+            <span class="repo-arrow">→</span>
+          </div>
+        </div>`;
+    }).join('')}</div>`;
+  }
+
+  /* ── REPO PAGE ── */
+  async function loadRepo(repoId) {
+    const [author, repoName] = parseRepoId(repoId);
+    const displayName = repoName.replace(/-/g, ' ');
+
+    document.getElementById('repo-author-display').textContent = author;
+    document.getElementById('repo-name-display').textContent = displayName;
+    document.getElementById('repo-gh-link').href = `https://github.com/${author}/${repoName}`;
+    document.getElementById('stat-apps').textContent = '—';
+    document.getElementById('stat-unique').textContent = '—';
+    document.getElementById('filter-chips').innerHTML = '';
+    document.getElementById('search-input').value = '';
+    activeFilter = 'all';
+    allApps = [];
+
+    const container = document.getElementById('app-container');
+    container.innerHTML = `<div class="loader"><div class="spinner"></div><span class="loader-text">loading packages...</span></div>`;
+
+    try {
+      const res = await fetch(`repos/${repoId}/metadata/repo.json`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const apps = await res.json();
+      allApps = apps;
+
+      const unique = new Set(apps.map(a => a.package_id)).size;
+      document.getElementById('stat-apps').textContent = apps.length;
+      document.getElementById('stat-unique').textContent = unique;
+      document.getElementById('app-count').textContent = apps.length;
+
+      buildFilterChips(apps);
+      renderApps(apps);
+    } catch (err) {
+      container.innerHTML = `<div class="error-msg">⚠ Could not load metadata — ${esc(err.message)}</div>`;
+    }
+  }
+
+  function buildFilterChips(apps) {
+    const tags = {};
+    apps.forEach(app => {
+      const suffix = app.asset_name.replace(/^.*?-([a-z0-9-]+)\.apk$/i, '$1');
+      // guess variant from asset_name
+      if (app.asset_name.includes('revanced-extended')) tags['rvx-extended'] = (tags['rvx-extended']||0)+1;
+      else if (app.asset_name.includes('revanced')) tags['revanced'] = (tags['revanced']||0)+1;
+      if (app.asset_name.includes('morphe')) tags['morphe'] = (tags['morphe']||0)+1;
+      if (app.asset_name.includes('anddea')) tags['anddea'] = (tags['anddea']||0)+1;
+      if (app.asset_name.includes('piko')) tags['piko'] = (tags['piko']||0)+1;
+      if (app.asset_name.includes('derevanced')) tags['derevanced'] = (tags['derevanced']||0)+1;
+      if (app.asset_name.includes('beta')) tags['beta'] = (tags['beta']||0)+1;
+    });
+
+    const el = document.getElementById('filter-chips');
+    const all = `<span class="chip active" data-filter="all" onclick="setFilter(this,'all')">All</span>`;
+    const rest = Object.entries(tags).sort((a,b)=>b[1]-a[1]).map(([k,v]) =>
+      `<span class="chip" data-filter="${esc(k)}" onclick="setFilter(this,'${esc(k)}')">${esc(k)} <span style="opacity:.5">${v}</span></span>`
+    ).join('');
+    el.innerHTML = all + rest;
+  }
+
+  function setFilter(el, filter) {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    activeFilter = filter;
+    filterApps();
+  }
+
+  function filterApps() {
+    const q = document.getElementById('search-input').value.toLowerCase();
+    let filtered = allApps;
+
+    if (activeFilter !== 'all') {
+      filtered = filtered.filter(a => a.asset_name.includes(activeFilter));
+    }
+
+    if (q) {
+      filtered = filtered.filter(a =>
+        a.app_name.toLowerCase().includes(q) ||
+        a.package_id.toLowerCase().includes(q) ||
+        a.asset_name.toLowerCase().includes(q)
+      );
+    }
+
+    document.getElementById('app-count').textContent = filtered.length;
+    renderApps(filtered);
+  }
+
+  function renderApps(apps) {
+    const container = document.getElementById('app-container');
+    if (!apps.length) {
+      container.innerHTML = '<div class="empty">No packages match your search.</div>';
+      return;
+    }
+
+    container.innerHTML = `<div class="app-grid">${apps.map((app, i) => {
+      const hasStore = app.play_store_url && app.play_store_url.trim();
+      const discoveriumFilename = app.discoverium_file ? app.discoverium_file.split('/').pop() : null;
+      const dataAttrs = `data-repo="${esc(currentRepo)}" data-pkg="${esc(app.package_id)}" data-disc="${esc(discoveriumFilename || '')}"`;
+
+      return `
+        <div class="app-card">
+          <div class="app-card-header">
+            <div class="app-icon">${appIcon(app.app_name)}</div>
+            <div>
+              <div class="app-name">${esc(app.app_name)}</div>
+              <span class="app-version">v${esc(app.version_name)}</span>
+            </div>
+          </div>
+          <div class="app-details">
+            <div class="app-detail-row">
+              <span class="app-detail-label">pkg</span>
+              <span class="app-detail-value pkg">${esc(app.package_id)}</span>
+            </div>
+            <div class="app-detail-row">
+              <span class="app-detail-label">asset</span>
+              <span class="app-detail-value">${esc(app.asset_name)}</span>
+            </div>
+            ${app.sha256 ? `<div class="app-detail-row">
+              <span class="app-detail-label">sha256</span>
+              <span class="app-detail-value" style="font-size:0.6rem;opacity:0.6">${esc(app.sha256.slice(0,32))}…</span>
+            </div>` : ''}
+          </div>
+          <div class="app-divider"></div>
+          <div class="app-actions">
+            <button class="btn btn-obtainium" ${dataAttrs} onclick="addToObtainium(this)">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+              Obtainium
+            </button>
+            <button class="btn btn-copy" ${dataAttrs} onclick="copyJson(this)">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              Copy JSON
+            </button>
+            ${hasStore ? `<a class="btn btn-store" href="${esc(app.play_store_url)}" target="_blank" rel="noopener">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 3 18 9-18 9V3z"/></svg>
+              Play Store
+            </a>` : ''}
+          </div>
+        </div>`;
+    }).join('')}</div>`;
+  }
+
+  /* ── FETCH DISCOVERIUM JSON ── */
+  async function fetchDiscoveriumJson(repoId, filename) {
+    const url = `repos/${repoId}/discoverium/${filename}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+    return res.json();
+  }
+
+  /* ── ADD TO OBTAINIUM ── */
+  async function addToObtainium(btn) {
+    const repo = btn.dataset.repo;
+    const disc = btn.dataset.disc;
+    if (!disc) { showToast('⚠ No discoverium file available'); return; }
+
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:1.5px;display:inline-block"></span> Loading…';
+    btn.disabled = true;
+
+    try {
+      const json = await fetchDiscoveriumJson(repo, disc);
+      const encoded = encodeURIComponent(JSON.stringify(json));
+      const link = `obtainium://app/${encoded}`;
+      window.location.href = link;
+      showToast('Opening Obtainium…');
+    } catch (err) {
+      showToast('⚠ Failed: ' + err.message);
+    } finally {
+      btn.innerHTML = orig;
+      btn.disabled = false;
+    }
+  }
+
+  /* ── COPY JSON ── */
+  async function copyJson(btn) {
+    const repo = btn.dataset.repo;
+    const disc = btn.dataset.disc;
+    if (!disc) { showToast('⚠ No JSON available'); return; }
+
+    const orig = btn.innerHTML;
+    btn.innerHTML = '…';
+    btn.disabled = true;
+
+    try {
+      const json = await fetchDiscoveriumJson(repo, disc);
+      await navigator.clipboard.writeText(JSON.stringify(json, null, 2));
+      btn.innerHTML = '✓ Copied!';
+      btn.classList.add('copied');
+      showToast('JSON copied to clipboard');
+      setTimeout(() => {
+        btn.innerHTML = orig;
+        btn.classList.remove('copied');
+        btn.disabled = false;
+      }, 1800);
+    } catch (err) {
+      showToast('⚠ Copy failed: ' + err.message);
+      btn.innerHTML = orig;
+      btn.disabled = false;
+    }
+  }
+</script>
 </body>
 </html>
