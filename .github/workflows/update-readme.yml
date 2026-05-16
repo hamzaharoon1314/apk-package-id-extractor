@@ -1,0 +1,30 @@
+name: Update README
+
+on:
+  push:
+    paths:
+      - 'docs/repos/repos.json'
+      - 'docs/repos/**/metadata/repo.json'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Update README
+        run: python scripts/update_readme.py
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git diff --quiet || (git add README.md && git commit -m "docs: update tracked repos in README [skip ci]" && git push)

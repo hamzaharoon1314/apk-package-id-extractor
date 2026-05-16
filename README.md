@@ -1,128 +1,55 @@
-# APK Package ID & Config Extractor
+# Obtainium Configs 
 
-Automatically scan GitHub release APKs, extract Android package IDs, and generate ready-to-use configs for Discoverium and Obtainium.
+Adding patched APKs to [Obtainium](https://github.com/ImranR98/Obtainium) means hunting down the right package ID, finding the correct asset filter regex, and manually filling in every field. Do that for a dozen apps across a few repos and it gets old fast.
 
-The workflow downloads APK assets from a GitHub release, extracts metadata using `aapt`, and publishes:
-- Package IDs
-- App metadata
-- SHA256 hashes
-- App icons
-- Discoverium/Obtainium configs
-
-> [!IMPORTANT]
-> Looking for generated APK package IDs, Discoverium configs, Obtainium-compatible JSON, and tracked repositories?
->
-> Go to:
->
-> [`docs/README.md`](./docs/README.md)
->
-> This index contains all scanned repositories with direct links to generated metadata pages and configs.
+This repo automates all of that.
 
 ---
 
-# Features
+## What it does
 
-- Extract package IDs from APK files
-- Generate Discoverium configs
-- Generate Obtainium-compatible JSON
-- Extract APK icons
-- Generate markdown app index
-- SHA256 hashing
-- Parallel APK processing
-- Automatic GitHub Actions workflow
-- Supports large APK release repositories
+A GitHub Actions workflow periodically scans a list of patched APK repositories (ReVanced, ReVanced Extended, Morphe, Anddea, Piko, and others). For each release asset it finds, it:
+
+1. Extracts the package ID and version from the APK
+2. Generates a ready-to-use Obtainium config (Discoverium JSON) with the correct source URL, asset filter regex, and app metadata pre-filled
+3. Commits everything to this repo so the data stays current automatically
 
 ---
 
-# Output Structure
+## How to use it
 
-```text
-docs/
-├── repo-name.md
-├── json/
-├── discoverium/
-└── icons/
-```
+Visit the site to browse all tracked repos and packages:
 
----
+**→ [hamzaharoon1314.github.io/obtainium-configs](https://hamzaharoon1314.github.io/obtainium-configs)**
 
-# Generated Data
+Find the app you want, then hit **Add to Obtainium** — it opens Obtainium directly with the config pre-loaded. No manual setup needed.
 
-Each scanned APK includes:
-- App name
-- Package ID
-- APK filename
-- Version
-- SHA256
-- Play Store link
-- Discoverium/Obtainium config
+There's also a **Copy JSON** button if you want the raw config, and a **Play Store** link where available.
 
 ---
 
-# How It Works
+## Tracked repos
 
-1. Enter a GitHub repository
-2. Workflow downloads release APKs
-3. APK metadata is extracted using `aapt`
-4. Configs and markdown files are generated automatically
-5. Results are pushed to the repository
-
-## 1. Run The Workflow
-
-Open:
-
-```text
-Actions
-```
-
-Select:
-
-```text
-Update APK package IDs
-```
-
-Click:
-
-```text
-Run workflow
-```
+<!-- TRACKED_REPOS_START -->
+<!-- TRACKED_REPOS_END -->
 
 ---
 
-## 2. Enter Repository
+## Repository
 
-Use format:
-
-```text
-OWNER/REPO
-```
-
-Example:
-
-```text
-NoName-Person/repoName
-```
-
-# Example Use Cases
-
-- APK package identification
-- Discoverium repositories
-- Obtainium sources
-- APK metadata indexing
-- Android app tracking
-- Modded APK repositories
-- Automation workflows
+[github.com/hamzaharoon1314/obtainium-configs](https://github.com/hamzaharoon1314/obtainium-configs)
 
 ---
 
-# Notes
+## Adding a new repo
 
-- APKs are downloaded temporarily during processing
-- XML adaptive icons are skipped automatically
-- Only public GitHub repositories are supported
+1. Add the repo identifier to `docs/repos/repos.json`
+2. The workflow picks it up on the next run and generates all the configs
 
 ---
 
-# License
+## Tech
 
-MIT
+- Python script scrapes release assets and extracts package metadata
+- GitHub Actions runs the update on a schedule
+- GitHub Pages hosts the browser UI
