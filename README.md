@@ -52,8 +52,7 @@ _Last updated: 2026-05-16 08:50 UTC_
 
 ---
 
-## Tech
+# Disclaimer
 
-- Python script scrapes release assets and extracts package metadata
-- GitHub Actions runs the update on a schedule
-- GitHub Pages hosts the browser UI
+This repository does not host APKs permanently.
+`AI IS USED IN WRITING THE CODE!`
