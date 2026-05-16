@@ -13,7 +13,6 @@ This repository automatically scans GitHub APK release repositories and generate
 
 ## Available APK Repositories
 
-- [FiorenMas/Revanced-And-Revanced-Extended-Non-Root](https://github.com/hamzaharoon1314/apk-package-id-extractor/blob/main/docs/FiorenMas__Revanced-And-Revanced-Extended-Non-Root.md)
 
 ---
 
