@@ -9,7 +9,7 @@
   "otherAssetUrls": "[[\"twitter-piko-material-you-v11.81.0-release.0.apk\", \"https://github.com/crimera/twitter-apk/releases/download/11.81.0-release.0/twitter-piko-material-you-v11.81.0-release.0.apk\"], [\"x-piko-material-you-v11.81.0-release.0.apk\", \"https://github.com/crimera/twitter-apk/releases/download/11.81.0-release.0/x-piko-material-you-v11.81.0-release.0.apk\"], [\"x-piko-v11.81.0-release.0.apk\", \"https://github.com/crimera/twitter-apk/releases/download/11.81.0-release.0/x-piko-v11.81.0-release.0.apk\"]]",
   "preferredApkIndex": 0,
   "additionalSettings": "{\"includePrereleases\": false, \"fallbackToOlderReleases\": true, \"filterReleaseTitlesByRegEx\": \"\", \"filterReleaseNotesByRegEx\": \"\", \"verifyLatestTag\": false, \"sortMethodChoice\": \"date\", \"useLatestAssetDateAsReleaseDate\": false, \"releaseTitleAsVersion\": false, \"trackOnly\": false, \"versionExtractionRegEx\": \"\", \"matchGroupToUse\": \"\", \"versionDetection\": true, \"releaseDateAsVersion\": false, \"useVersionCodeAsOSVersion\": false, \"apkFilterRegEx\": \"^twitter\\\\-piko\\\\-v11\\\\.81\\\\.0\\\\-release\\\\.0.*\\\\\\\\.apk$\", \"invertAPKFilter\": false, \"autoApkFilterByArch\": true, \"appName\": \"Twitter\", \"appAuthor\": \"crimera\", \"shizukuPretendToBeGooglePlay\": false, \"allowInsecure\": false, \"exemptFromBackgroundUpdates\": false, \"skipUpdateNotifications\": false, \"about\": \"\", \"refreshBeforeDownload\": false, \"dontSortReleasesList\": false}",
-  "lastUpdateCheck": 1778919192264482,
+  "lastUpdateCheck": 1778921275060947,
   "pinned": false,
   "categories": [],
   "releaseDate": null,
